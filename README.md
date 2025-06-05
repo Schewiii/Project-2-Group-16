@@ -1,6 +1,6 @@
 # Universal ggThemeAssist
 
-> **An Interactive Shiny App for Custom ggplot2 Theming**
+**An Interactive Shiny App for Custom ggplot2 Theming**
 
 ---
 
@@ -54,14 +54,11 @@ This repository also contains:
 
 ## Folder Structure
 
-Folder Structure:
-
-.
-├── .gitignore
-├── README.md
-├── app/  
-│ └── Plot_Customization.R # main application
-├── saved_themes.json # JSON file storing saved theme configurations
-├── Final_Report.pdf # Final written report
-├── Proposal.pdf # Initial project proposal
-└── Slides.pdf # Presentation slides
+- .gitignore
+- README.md
+- app/
+  - Plot_Customization
+- saved_themes.json
+- Final_Report.pdf
+- Proposal.pdf
+- Slides.pdf
