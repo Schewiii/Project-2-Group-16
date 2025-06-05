@@ -41,32 +41,31 @@ apply_theme_config <- function(conf, session) {
   updateCheckboxInput(session, "flip", value = conf$flip_coords)
 }
 
-# This function returns a single geom_ layer, always passing alpha = input$alpha 
-# as a constant (not inside aes()). Bars get width = 0.7, and position = "stack" or "dodge".
+# Always pass alpha = input$alpha as a constant (never inside aes()).
 generate_geom <- function(input, colorvar, fillcol) {
   if (input$geom == "point") {
     if (colorvar == "none") {
       geom_point(
-        size = input$point_size,
+        size  = input$point_size,
         alpha = input$alpha,
         color = fillcol
       )
     } else {
       geom_point(
-        size = input$point_size,
+        size  = input$point_size,
         alpha = input$alpha
       )
     }
   } else if (input$geom == "line") {
     if (colorvar == "none") {
       geom_line(
-        size = input$point_size,
+        size  = input$point_size,
         alpha = input$alpha,
         color = fillcol
       )
     } else {
       geom_line(
-        size = input$point_size,
+        size  = input$point_size,
         alpha = input$alpha
       )
     }
@@ -75,29 +74,29 @@ generate_geom <- function(input, colorvar, fillcol) {
     position_type <- if (colorvar == "none") "stack" else "dodge"
     if (colorvar == "none") {
       geom_col(
-        width = 0.7,
-        alpha = input$alpha,
-        fill = fillcol,
+        width    = 0.7,
+        alpha    = input$alpha,
+        fill     = fillcol,
         position = position_type
       )
     } else {
-      # If colorvar != "none", the aes(fill = colorvar) is already in aes_mapping
+      # aes(fill = <colorvar>) already in aes_mapping
       geom_col(
-        width = 0.7,
-        alpha = input$alpha,
+        width    = 0.7,
+        alpha    = input$alpha,
         position = position_type
       )
     }
   } else if (input$geom == "density") {
     geom_density(
       alpha = input$alpha,
-      fill = fillcol
+      fill  = fillcol
     )
   } else if (input$geom == "histogram") {
     geom_histogram(
       alpha = input$alpha,
-      fill = fillcol,
-      bins = 30
+      fill  = fillcol,
+      bins  = 30
     )
   }
 }
@@ -105,13 +104,13 @@ generate_geom <- function(input, colorvar, fillcol) {
 # ---------------- UI ----------------
 
 ui <- fluidPage(
-  titlePanel("Universal ggThemeAssist"),
+  titlePanel("Universal ggThemeAssist (No Legend)"),
   
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload CSV", accept = ".csv"),
       
-      # Only show these controls once the file is uploaded:
+      # Only show everything below after a file is uploaded:
       conditionalPanel(
         condition = "output.fileUploaded == true",
         
@@ -130,13 +129,14 @@ ui <- fluidPage(
           )
         ),
         
-        # If no color variable, let user pick a manual color:
+        # If no color variable is chosen, let user pick a manual color.
+        # (We do NOT show any legend-themed UI here.)
         conditionalPanel(
           condition = "input.colorvar == 'none'",
           colourInput("manual_color", "Choose Plot Color", value = "#2C3E50")
         ),
         
-        # Always show point‐size & alpha sliders:
+        # Always show these:
         sliderInput("point_size", "Point Size", min = 0.5, max = 10, value = 2),
         sliderInput("alpha", "Transparency (alpha)", min = 0.1, max = 1, value = 0.8),
         
@@ -156,7 +156,8 @@ ui <- fluidPage(
             "plotly_dark"  = "plotly_dark",
             "ggplot2"      = "ggplot2",
             "seaborn"      = "seaborn"
-          )
+          ),
+          selected = "ggplot2"
         ),
         sliderInput("base_size", "Base Text Size", min = 8, max = 24, value = 12),
         checkboxInput("show_grid", "Show Major Grid", TRUE),
@@ -199,16 +200,15 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  # Reactive flag: is a file uploaded?
+  # Reactive flag: has a file been uploaded?
   output$fileUploaded <- reactive({ !is.null(input$file) })
   outputOptions(output, "fileUploaded", suspendWhenHidden = FALSE)
   
-  # Read and clean the CSV
+  # Load + clean the CSV
   user_data <- reactive({
     req(input$file)
     tryCatch({
       df <- read.csv(input$file$datapath, stringsAsFactors = FALSE)
-      # Drop any rows that are entirely NA
       df <- df[rowSums(is.na(df)) != ncol(df), ]
       names(df) <- trimws(names(df))
       df
@@ -218,7 +218,7 @@ server <- function(input, output, session) {
     })
   })
   
-  # Dynamically generate X/Y/Color selectors once data is available
+  # Dynamically generate X / Y / Color selectors once data is available
   output$var_selectors <- renderUI({
     req(user_data())
     vars <- names(user_data())
@@ -235,7 +235,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # If saved themes exist, allow load/delete
+  # Always render the “Load / Delete Theme” UI, even if there are no saved themes
   output$load_theme_ui <- renderUI({
     saved_themes <- load_themes_from_file()
     if (length(saved_themes) > 0) {
@@ -246,20 +246,25 @@ server <- function(input, output, session) {
         ),
         actionButton("load_theme", "Load Theme"),
         br(), br(),
-        conditionalPanel(
-          condition = "input.saved_themes !== ''",
-          actionButton("delete_theme", "Delete Theme")
+        actionButton("delete_theme", "Delete Theme")
+      )
+    } else {
+      # No saved themes yet; show a disabled dropdown
+      tagList(
+        selectInput(
+          "saved_themes", "Load Saved Theme",
+          choices = c("No saved themes" = "")
         )
+        # Buttons are omitted when there’s nothing to load/delete
       )
     }
   })
   
-  # Build the ggplot object properly
+  # Build the underlying ggplot object
   build_plot <- reactive({
     req(input$xvar, user_data())
     df <- user_data()
     
-    # 1) Construct aes() mapping
     aes_mapping <- switch(
       input$geom,
       
@@ -274,7 +279,7 @@ server <- function(input, output, session) {
         }
       },
       
-      # Default = point or line
+      # scatter / line
       {
         if (input$colorvar != "none") {
           aes_string(x = input$xvar, y = input$yvar, color = input$colorvar)
@@ -284,13 +289,9 @@ server <- function(input, output, session) {
       }
     )
     
-    # 2) Start a ggplot with that aesthetic mapping
     p <- ggplot(df, aes_mapping)
-    
-    # 3) Add the appropriate geom layer
     p <- p + generate_geom(input, input$colorvar, input$manual_color)
     
-    # 4) If it’s a bar chart WITH a color variable, add scale_fill_brewer()
     if (input$geom == "col" && input$colorvar != "none") {
       p <- p + scale_fill_brewer(palette = "Set2")
     }
@@ -298,7 +299,7 @@ server <- function(input, output, session) {
     p
   })
   
-  # Apply themes, flip, log scales, labels, etc., to build the final plot
+  # Apply base‐theme, grid, flip, log‐scales, labels, etc.
   themed_plot <- reactive({
     req(build_plot())
     p <- build_plot()
@@ -312,7 +313,6 @@ server <- function(input, output, session) {
       "seaborn"      = theme_minimal,
       theme_minimal
     )
-    
     p <- p + theme_func(base_size = input$base_size)
     
     if (!input$show_grid) {
@@ -368,7 +368,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Render the ggplot2 code snippet if requested
+  # Show the ggplot2 code if requested
   output$themeCode <- renderText({
     req(input$xvar)
     
@@ -447,7 +447,7 @@ server <- function(input, output, session) {
           "alpha = ", input$alpha, ")"
         )
       },
-      # default: histogram
+      # fallback: histogram
       {
         paste0(
           "geom_histogram(fill = \"", input$manual_color, "\", ",
@@ -504,7 +504,7 @@ server <- function(input, output, session) {
     paste(code_lines, collapse = "\n")
   })
   
-  # Download handler
+  # Download handler for PNG
   output$download_plot <- downloadHandler(
     filename = function() "custom_plot.png",
     content = function(file) {
@@ -534,16 +534,22 @@ server <- function(input, output, session) {
   
   observeEvent(input$load_theme, {
     req(input$saved_themes)
-    conf <- load_themes_from_file()[[input$saved_themes]]
-    if (!is.null(conf)) {
-      isolate(apply_theme_config(conf, session))
-      showNotification("Theme loaded!", type = "message")
+    # If the dropdown’s value is empty (""), do nothing.
+    if (nzchar(input$saved_themes)) {
+      conf <- load_themes_from_file()[[input$saved_themes]]
+      if (!is.null(conf)) {
+        isolate(apply_theme_config(conf, session))
+        showNotification("Theme loaded!", type = "message")
+      }
     }
   })
   
   observeEvent(input$delete_theme, {
-    if (delete_theme_from_file(input$saved_themes)) {
+    req(input$saved_themes)
+    # Only delete if actually a saved theme is selected (not the empty choice).
+    if (nzchar(input$saved_themes) && delete_theme_from_file(input$saved_themes)) {
       showNotification("Theme deleted", type = "message")
+      # After deletion, reset the dropdown to the placeholder
       isolate({ updateSelectInput(session, "saved_themes", selected = "") })
     } else {
       showNotification("Failed to delete theme", type = "error")

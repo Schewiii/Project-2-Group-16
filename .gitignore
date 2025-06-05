@@ -1,0 +1,47 @@
+# R artifacts
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+
+# R package library
+.Rlibs/
+
+# Shiny / RStudio project files
+.Rproj
+.Rproj.user/
+
+# OS‐specific files
+.DS_Store
+Thumbs.db
+
+# Logs, temporary files
+*.log
+*.tmp
+
+# Ignoring user‐uploaded CSVs (if you store sample CSVs in a specific folder, e.g. “data/”)
+# If you want to keep sample CSVs under version control, remove or adjust this line:
+data/*.csv
+
+# Python caches (if any Python scripts live in “app/”)
+__pycache__/
+*.py[cod]
+
+# JSON theme file might be intentionally tracked; if you want to ignore it during development, uncomment:
+# saved_themes.json
+
+# npm / front‐end artifacts (if you ever add a package.json)
+node_modules/
+build/
+
+# MacOS Finder files
+.DS_Store
+
+# IDE settings directories
+.vscode/
+.idea/
+
+# Any other binary outputs
+*.png
+*.pdf
